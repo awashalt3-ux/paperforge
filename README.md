@@ -4,6 +4,7 @@ A local-first PDF studio for designing, editing, and processing documents in the
 
 ![Paperforge](public/favicon.svg)
 
+**Live demo:** https://paperforge.wasmer.app/
 ## Highlights
 
 - **Professional editor** — Konva canvas with page thumbnails, add/duplicate/rotate/reorder/delete pages, undo/redo (60 snapshots), zoom and pan, snap-to-grid, alignment guides, marquee and multi-select, layer ordering, locking, inline text editing, copy/cut/paste/duplicate, and keyboard shortcuts.
