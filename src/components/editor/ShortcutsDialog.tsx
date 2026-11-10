@@ -44,6 +44,16 @@ const SHORTCUTS: { group: string; items: { keys: string[]; label: string }[] }[]
     ],
   },
   {
+    group: "Workspace",
+    items: [
+      { keys: ["Ctrl", "K"], label: "Search documents, tools and actions" },
+      { keys: ["G", "D"], label: "Go to the dashboard" },
+      { keys: ["G", "T"], label: "Go to templates" },
+      { keys: ["G", "P"], label: "Go to PDF tools" },
+      { keys: ["G", "S"], label: "Go to settings" },
+    ],
+  },
+  {
     group: "View",
     items: [
       { keys: ["+", "−"], label: "Zoom in or out" },

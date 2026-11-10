@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowUpDown,
   CheckCircle2,
@@ -59,6 +59,7 @@ import { MAX_PDF_BYTES, validateImageFile, validatePdfFile } from "@/utils/files
 import { createId } from "@/utils/id";
 import { downloadBlob, formatBytes } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 type ToolId =
   | "merge"
@@ -70,6 +71,18 @@ type ToolId =
   | "watermark"
   | "numbers"
   | "extract";
+
+const ALL_TOOL_IDS: ToolId[] = [
+  "merge",
+  "split",
+  "rotate",
+  "remove",
+  "reorder",
+  "images",
+  "watermark",
+  "numbers",
+  "extract",
+];
 
 interface ToolDefinition {
   id: ToolId;
@@ -253,10 +266,16 @@ function isPdfToolError(error: unknown): error is PdfToolError {
 }
 
 export function ToolsPage() {
+  useDocumentTitle("PDF tools");
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const createFromDocument = useDocumentStore((state) => state.createFromDocument);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [toolId, setToolId] = useState<ToolId>("merge");
+  const requestedTool = searchParams.get("tool");
+  const initialTool = ALL_TOOL_IDS.includes(requestedTool as ToolId)
+    ? (requestedTool as ToolId)
+    : "merge";
+  const [toolId, setToolId] = useState<ToolId>(initialTool);
   const [inputs, setInputs] = useState<ToolInput[]>([]);
   const [options, setOptions] = useState<ToolOptions>(DEFAULT_OPTIONS);
   const [results, setResults] = useState<ResultFile[]>([]);
@@ -277,6 +296,16 @@ export function ToolsPage() {
     setError(null);
     setOptions(DEFAULT_OPTIONS);
   }, [toolId]);
+
+  // Keep the URL shareable: /tools?tool=split always opens Split.
+  useEffect(() => {
+    const current = searchParams.get("tool");
+    if (current === toolId) return;
+    const next = new URLSearchParams(searchParams);
+    if (toolId === "merge") next.delete("tool");
+    else next.set("tool", toolId);
+    setSearchParams(next, { replace: true });
+  }, [toolId, searchParams, setSearchParams]);
 
   const update = (patch: Partial<ToolOptions>) =>
     setOptions((current) => ({ ...current, ...patch }));
@@ -612,7 +641,7 @@ export function ToolsPage() {
                     className={cn(
                       "mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg",
                       active
-                        ? "bg-white/14 text-white dark:bg-forge-950/10 dark:text-forge-950"
+                        ? "bg-white/15 text-white dark:bg-forge-950/10 dark:text-forge-950"
                         : "bg-muted/70 text-muted-foreground",
                     )}
                   >

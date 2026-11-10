@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import animate from "tailwindcss-animate";
 
 const config: Config = {
   darkMode: ["class"],
@@ -89,14 +90,34 @@ const config: Config = {
         shimmer: {
           "100%": { transform: "translateX(100%)" },
         },
+        "forge-rise": {
+          "0%": { opacity: "0", transform: "translateY(14px) scale(0.985)" },
+          "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        "forge-pop": {
+          "0%": { opacity: "0", transform: "scale(0.92)" },
+          "60%": { opacity: "1", transform: "scale(1.02)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        "forge-drift": {
+          "0%, 100%": { transform: "translate3d(0, 0, 0) scale(1)" },
+          "50%": { transform: "translate3d(0, -14px, 0) scale(1.04)" },
+        },
+        "forge-dash": {
+          to: { strokeDashoffset: "-40" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "forge-rise": "forge-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "forge-pop": "forge-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "forge-drift": "forge-drift 9s ease-in-out infinite",
+        "forge-dash": "forge-dash 2.4s linear infinite",
       },
     },
   },
-  plugins: [],
+  plugins: [animate],
 };
 
 export default config;

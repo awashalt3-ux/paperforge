@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { useDocumentStore } from "@/store/documentStore";
 import { useUIStore } from "@/store/uiStore";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
   TEMPLATE_DEFINITIONS,
   getTemplatePreviewPage,
@@ -49,6 +50,7 @@ function TemplatePreview({
 }
 
 export function TemplatesPage() {
+  useDocumentTitle("Templates");
   const navigate = useNavigate();
   const createFromDocument = useDocumentStore((state) => state.createFromDocument);
   const openCreateDialog = useUIStore((state) => state.setCreateDialogOpen);

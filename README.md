@@ -5,6 +5,7 @@ A local-first PDF studio for designing, editing, and processing documents in the
 ![Paperforge](public/favicon.svg)
 
 **Live demo:** https://paperforge.wasmer.app/
+
 ## Highlights
 
 - **Professional editor** — Konva canvas with page thumbnails, add/duplicate/rotate/reorder/delete pages, undo/redo (60 snapshots), zoom and pan, snap-to-grid, alignment guides, marquee and multi-select, layer ordering, locking, inline text editing, copy/cut/paste/duplicate, and keyboard shortcuts.
@@ -12,7 +13,9 @@ A local-first PDF studio for designing, editing, and processing documents in the
 - **Real PDF import** — PDF.js validates and renders the source while the original pages are preserved. Imported text is intentionally treated as fixed source content; add new text, images, signatures, highlights, and annotations on top.
 - **Real PDF export** — pdf-lib draws vector text with embedded Inter fonts (via fontkit), images, shapes, tables, and overlays. Imported pages can be copied at original size or fitted onto a preset page size with correct rotation and margin handling. Metadata, page ranges, and progress are included.
 - **Eight editable templates** — invoice, professional quotation, resume/CV, business letter, project proposal, meeting report, certificate, and contract.
-- **Nine PDF tools** — merge, split, rotate, remove pages, reorder, images to PDF, watermark, page numbers, and extract pages.
+- **Nine PDF tools** — merge, split, rotate, remove pages, reorder, images to PDF, watermark, page numbers, and extract pages. Each tool is deep-linkable (`/tools?tool=split`).
+- **Search that works** — `Ctrl/Cmd+K` opens a real command palette covering recent documents, destinations, PDF tools, and create/import actions, with full keyboard navigation.
+- **A 404 that helps** — unknown routes render a styled recovery page with document search, recent documents, destination cards, and create/import shortcuts.
 - **Local-first persistence** — Dexie/IndexedDB autosave every 500 ms, document thumbnails, restore-on-open, portable project files, storage statistics, and reset controls.
 - **Considered interface** — warm paper palette, forge-green accents, Inter/Newsreader/JetBrains Mono typography, light/dark/system themes, reduced-motion support, and desktop-first responsive layouts.
 

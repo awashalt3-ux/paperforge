@@ -1093,7 +1093,7 @@ export function EditorPage() {
     return (
       <div className="grid min-h-screen place-items-center bg-background px-6">
         <div className="w-full max-w-md rounded-2xl border border-border/70 bg-card p-7 text-center shadow-soft animate-in-up">
-          <div className="mx-auto grid size-11 place-items-center rounded-xl bg-destructive/8 text-destructive ring-1 ring-destructive/15">
+          <div className="mx-auto grid size-11 place-items-center rounded-xl bg-destructive/10 text-destructive ring-1 ring-destructive/15">
             <AlertTriangle className="size-5" />
           </div>
           <h1 className="display-serif mt-5 text-[28px] leading-tight">

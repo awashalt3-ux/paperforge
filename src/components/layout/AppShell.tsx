@@ -1,31 +1,24 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   FileText,
-  LayoutDashboard,
-  LayoutTemplate,
   PanelLeftClose,
   PanelLeftOpen,
-  Settings2,
+  Search,
   Sparkles,
   Upload,
-  Wrench,
   Plus,
 } from "lucide-react";
 import { Brand, BrandMark } from "@/components/common/Brand";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn, formatRelativeDate } from "@/lib/utils";
+import { cn, formatRelativeDate, isTypingTarget } from "@/lib/utils";
+import { DESTINATIONS } from "@/lib/navigation";
 import { useDocumentStore } from "@/store/documentStore";
 import { useUIStore } from "@/store/uiStore";
 
-const nav = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/templates", label: "Templates", icon: LayoutTemplate },
-  { to: "/tools", label: "PDF tools", icon: Wrench },
-  { to: "/settings", label: "Settings", icon: Settings2 },
-];
+const nav = DESTINATIONS;
 
 function useSidebarCollapsed() {
   const [collapsed, setCollapsed] = useState(() => {
@@ -41,10 +34,12 @@ function useSidebarCollapsed() {
 export function AppShell() {
   const [collapsed, setCollapsed] = useSidebarCollapsed();
   const location = useLocation();
+  const navigate = useNavigate();
   const documents = useDocumentStore((state) => state.documents);
   const initialize = useDocumentStore((state) => state.initialize);
   const openCreateDialog = useUIStore((state) => state.setCreateDialogOpen);
   const openImportDialog = useUIStore((state) => state.setImportDialogOpen);
+  const setCommandOpen = useUIStore((state) => state.setCommandOpen);
   const recent = documents.slice(0, 4);
 
   useEffect(() => {
@@ -56,6 +51,43 @@ export function AppShell() {
     const main = document.getElementById("app-scroll");
     main?.scrollTo({ top: 0 });
   }, [location.pathname]);
+
+  // "G then D/T/P/S" navigation, mirroring the labels in the palette.
+  useEffect(() => {
+    let pending = false;
+    let timer = 0;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isTypingTarget(event.target) || event.metaKey || event.ctrlKey || event.altKey) {
+        pending = false;
+        return;
+      }
+      if (event.key.toLowerCase() === "g") {
+        pending = true;
+        window.clearTimeout(timer);
+        timer = window.setTimeout(() => {
+          pending = false;
+        }, 1200);
+        return;
+      }
+      if (!pending) return;
+      pending = false;
+      const map: Record<string, string> = {
+        d: "/",
+        t: "/templates",
+        p: "/tools",
+        s: "/settings",
+      };
+      const target = map[event.key.toLowerCase()];
+      if (!target) return;
+      event.preventDefault();
+      navigate(target);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -108,6 +140,33 @@ export function AppShell() {
               <span>Import PDF</span>
             </Button>
           )}
+        </div>
+
+        <div className={cn("px-3 pb-2", collapsed && "flex justify-center px-2")}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setCommandOpen(true)}
+                aria-label="Search documents and tools"
+                className={cn(
+                  "flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card/50 text-[12px] text-muted-foreground transition-colors hover:border-foreground/15 hover:text-foreground",
+                  collapsed ? "w-9 justify-center" : "w-full px-2.5",
+                )}
+              >
+                <Search className="size-3.5 shrink-0" />
+                {!collapsed && (
+                  <>
+                    <span className="flex-1 text-left">Search…</span>
+                    <kbd className="rounded border border-border/80 bg-muted/50 px-1 py-0.5 font-mono text-[8.5px] text-muted-foreground/80">
+                      Ctrl K
+                    </kbd>
+                  </>
+                )}
+              </button>
+            </TooltipTrigger>
+            {collapsed && <TooltipContent side="right">Search</TooltipContent>}
+          </Tooltip>
         </div>
 
         <nav className={cn("mt-4 flex flex-1 flex-col gap-0.5 px-2.5", collapsed && "items-center px-2")}>
@@ -225,6 +284,14 @@ export function AppShell() {
           <Brand />
         </Link>
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setCommandOpen(true)}
+            aria-label="Search"
+          >
+            <Search className="size-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon-sm"

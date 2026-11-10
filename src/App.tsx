@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { CommandPalette } from "@/components/common/CommandPalette";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CreateDocumentDialog } from "@/components/pdf/CreateDocumentDialog";
 import { ImportPdfDialog } from "@/components/pdf/ImportPdfDialog";
@@ -54,6 +55,7 @@ export default function App() {
         </Routes>
         <CreateDocumentDialog />
         <ImportPdfDialog />
+        <CommandPalette />
         <Toaster
           position="bottom-right"
           closeButton

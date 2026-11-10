@@ -33,6 +33,7 @@ import {
 } from "@/store/preferencesStore";
 import { clearAllData, db } from "@/db/database";
 import { cn, formatBytes } from "@/lib/utils";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 const themeOptions: { value: ThemeMode; label: string; description: string; icon: typeof Sun }[] = [
   { value: "light", label: "Light", description: "Warm paper", icon: Sun },
@@ -87,6 +88,7 @@ function SettingRow({
 }
 
 export function SettingsPage() {
+  useDocumentTitle("Settings");
   const preferences = usePreferencesStore();
   const documents = useDocumentStore((state) => state.documents);
   const refreshDocuments = useDocumentStore((state) => state.refreshDocuments);
