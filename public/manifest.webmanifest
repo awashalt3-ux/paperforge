@@ -1,0 +1,26 @@
+{
+  "name": "Paperforge — PDF Studio",
+  "short_name": "Paperforge",
+  "description": "Local-first, open-source PDF creation and editing studio. Everything runs in your browser.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#faf9f6",
+  "theme_color": "#193b33",
+  "categories": ["productivity", "utilities", "graphics"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
