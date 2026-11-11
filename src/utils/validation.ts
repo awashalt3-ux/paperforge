@@ -108,6 +108,7 @@ export const paperDocumentSchema = z.object({
   updatedAt: finiteNumber,
   thumbnail: z.string().optional(),
   templateId: z.string().optional(),
+  deletedAt: finiteNumber.optional(),
   metadata: pdfMetadataSchema,
 });
 

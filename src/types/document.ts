@@ -108,6 +108,8 @@ export interface PaperDocument {
   updatedAt: number;
   thumbnail?: string;
   templateId?: string;
+  /** Set when the document is in the trash. Missing on active documents. */
+  deletedAt?: number;
   metadata: PdfMetadata;
 }
 
@@ -119,6 +121,8 @@ export interface DocumentSummary {
   updatedAt: number;
   thumbnail?: string;
   templateId?: string;
+  /** Set when the document sits in the trash. Documents in the trash are not listed by default. */
+  deletedAt?: number;
 }
 
 export type EditorTool =

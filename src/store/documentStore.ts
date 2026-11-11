@@ -11,10 +11,14 @@ import type {
 import {
   deleteDocumentCascade,
   duplicateDocumentRecord,
+  emptyTrash as emptyTrashRecords,
   getDocument,
   listDocumentSummaries,
+  listTrashedDocumentSummaries,
+  purgeExpiredTrash,
   putDocument,
-  putPdfAsset,
+  restoreDocument as restoreDocumentRecord,
+  trashDocument as trashDocumentRecord,
   updateDocumentThumbnail,
   db,
 } from "@/db/database";
@@ -44,6 +48,7 @@ export type ElementUpdate = {
 
 interface DocumentState {
   documents: DocumentSummary[];
+  trashedDocuments: DocumentSummary[];
   activeDocument: PaperDocument | null;
   historyPast: PaperDocument[];
   historyFuture: PaperDocument[];
@@ -63,7 +68,12 @@ interface DocumentState {
   ) => Promise<PaperDocument>;
   openDocument: (id: string) => Promise<PaperDocument | null>;
   closeDocument: () => Promise<void>;
+  /** Move a document to the trash (restorable for 30 days). */
   deleteDocument: (id: string) => Promise<void>;
+  /** Permanently remove a trashed or active document and its assets. */
+  destroyDocument: (id: string) => Promise<void>;
+  restoreDocument: (id: string) => Promise<void>;
+  emptyTrash: () => Promise<number>;
   duplicateDocument: (id: string) => Promise<PaperDocument | null>;
   renameDocument: (id: string, title: string) => Promise<void>;
   renameActiveDocument: (title: string) => void;
@@ -123,6 +133,7 @@ function summarize(document: PaperDocument): DocumentSummary {
     updatedAt: document.updatedAt,
     thumbnail: document.thumbnail,
     templateId: document.templateId,
+    deletedAt: document.deletedAt,
   };
 }
 
@@ -190,6 +201,7 @@ async function persistActive(
 
 export const useDocumentStore = create<DocumentState>((set, get) => ({
   documents: [],
+  trashedDocuments: [],
   activeDocument: null,
   historyPast: [],
   historyFuture: [],
@@ -203,8 +215,13 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   initialize: async () => {
     if (get().initialized) return;
     try {
-      const documents = await listDocumentSummaries();
-      set({ documents, initialized: true, error: null });
+      // Housekeeping: drop anything that has been in the trash past retention.
+      await purgeExpiredTrash().catch(() => []);
+      const [documents, trashedDocuments] = await Promise.all([
+        listDocumentSummaries(),
+        listTrashedDocumentSummaries(),
+      ]);
+      set({ documents, trashedDocuments, initialized: true, error: null });
     } catch (error) {
       set({
         initialized: true,
@@ -218,8 +235,11 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
   refreshDocuments: async () => {
     try {
-      const documents = await listDocumentSummaries();
-      set({ documents });
+      const [documents, trashedDocuments] = await Promise.all([
+        listDocumentSummaries(),
+        listTrashedDocumentSummaries(),
+      ]);
+      set({ documents, trashedDocuments });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Could not load documents." });
     }
@@ -267,6 +287,13 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         set({ isLoading: false, error: "This document no longer exists." });
         return null;
       }
+      if (record.deletedAt) {
+        set({
+          isLoading: false,
+          error: "This document is in the trash. Restore it from the dashboard to edit it.",
+        });
+        return null;
+      }
       const parsed = paperDocumentSchema.safeParse(record);
       if (!parsed.success) {
         set({
@@ -306,13 +333,50 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       clearTimeout(autosaveTimer);
       autosaveTimer = null;
     }
+    await trashDocumentRecord(id);
+    set((state) => {
+      const target = state.documents.find((document) => document.id === id);
+      return {
+        documents: state.documents.filter((document) => document.id !== id),
+        trashedDocuments: target
+          ? [{ ...target, deletedAt: Date.now() }, ...state.trashedDocuments]
+          : state.trashedDocuments,
+        activeDocument:
+          state.activeDocument?.id === id ? null : state.activeDocument,
+        error: null,
+      };
+    });
+  },
+
+  destroyDocument: async (id) => {
+    if (autosaveTimer) {
+      clearTimeout(autosaveTimer);
+      autosaveTimer = null;
+    }
     await deleteDocumentCascade(id);
     set((state) => ({
       documents: state.documents.filter((document) => document.id !== id),
-      activeDocument:
-        state.activeDocument?.id === id ? null : state.activeDocument,
+      trashedDocuments: state.trashedDocuments.filter((document) => document.id !== id),
+      activeDocument: state.activeDocument?.id === id ? null : state.activeDocument,
       error: null,
     }));
+  },
+
+  restoreDocument: async (id) => {
+    await restoreDocumentRecord(id);
+    const restored = await getDocument(id);
+    if (!restored) return;
+    set((state) => ({
+      documents: mergeSummary(state.documents, restored),
+      trashedDocuments: state.trashedDocuments.filter((document) => document.id !== id),
+      error: null,
+    }));
+  },
+
+  emptyTrash: async () => {
+    const removed = await emptyTrashRecords();
+    set({ trashedDocuments: [], error: null });
+    return removed;
   },
 
   duplicateDocument: async (id) => {
