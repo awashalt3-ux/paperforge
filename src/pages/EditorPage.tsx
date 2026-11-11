@@ -17,6 +17,7 @@ import {
   FileDown,
   FileOutput,
   Grid3X3,
+  ImageDown,
   Keyboard,
   Loader2,
   Magnet,
@@ -28,6 +29,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   PencilLine,
+  Printer,
   Redo2,
   Save,
   ShieldCheck,
@@ -52,6 +54,7 @@ import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
 import { ShortcutsDialog } from "@/components/editor/ShortcutsDialog";
 import { SignatureDialog } from "@/components/editor/SignatureDialog";
 import { ExportDialog } from "@/components/pdf/ExportDialog";
+import { ExportImagesDialog } from "@/components/pdf/ExportImagesDialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -68,6 +71,7 @@ import { useEditorStore, ZOOM_MAX, ZOOM_MIN } from "@/store/editorStore";
 import { usePreferencesStore } from "@/store/preferencesStore";
 import { useUIStore } from "@/store/uiStore";
 import { exportProjectFile } from "@/services/projects";
+import { printDocument } from "@/services/print";
 import { prepareImageFile } from "@/utils/files";
 import {
   cloneElementWithOffset,
@@ -252,6 +256,8 @@ export function EditorPage() {
   const [loadNonce, setLoadNonce] = useState(0);
   const [titleDraft, setTitleDraft] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
+  const [exportImagesOpen, setExportImagesOpen] = useState(false);
+  const [printBusy, setPrintBusy] = useState(false);
   const [signatureOpen, setSignatureOpen] = useState(false);
   const [editingText, setEditingText] = useState(false);
   const [preparingImage, setPreparingImage] = useState(false);
@@ -806,6 +812,25 @@ export function EditorPage() {
     }
   }, [saveNow]);
 
+  const handlePrint = useCallback(async () => {
+    const current = useDocumentStore.getState().activeDocument;
+    if (!current || printBusy) return;
+    setPrintBusy(true);
+    const toastId = toast.loading("Preparing the print view");
+    try {
+      await saveNow();
+      await printDocument(current, (label) => toast.loading(label, { id: toastId }));
+      toast.success("Print dialog ready", { id: toastId });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "This document could not be printed.",
+        { id: toastId },
+      );
+    } finally {
+      setPrintBusy(false);
+    }
+  }, [printBusy, saveNow]);
+
   const commitTitle = useCallback(() => {
     const current = useDocumentStore.getState().activeDocument;
     if (!current) return;
@@ -851,6 +876,8 @@ export function EditorPage() {
     nextPage: () => goToAdjacentPage(1),
     save: () => void saveDocument(true),
     exportPdf: () => setExportOpen(true),
+    exportImages: () => setExportImagesOpen(true),
+    print: () => void handlePrint(),
     exportProject: () => void handleExportProject(),
     toggleGrid,
     toggleSnap,
@@ -949,6 +976,11 @@ export function EditorPage() {
           event.preventDefault();
           if (event.altKey) actions.exportProject?.();
           else actions.exportPdf?.();
+          return;
+        }
+        if (lower === "p") {
+          event.preventDefault();
+          actions.print?.();
           return;
         }
         if (key === "]" || key === "}") {
@@ -1320,6 +1352,17 @@ export function EditorPage() {
                   Ctrl ⇧ E
                 </span>
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setExportImagesOpen(true)} className="gap-2">
+                <ImageDown />
+                Export images (PNG / JPEG)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => void handlePrint()} className="gap-2">
+                <Printer />
+                Print…
+                <span className="ml-auto font-mono text-[9px] text-muted-foreground/70">
+                  Ctrl P
+                </span>
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => void handleExportProject()}
                 className="gap-2"
@@ -1511,6 +1554,7 @@ export function EditorPage() {
       )}
 
       <ExportDialog open={exportOpen} onOpenChange={setExportOpen} />
+      <ExportImagesDialog open={exportImagesOpen} onOpenChange={setExportImagesOpen} />
       <SignatureDialog
         open={signatureOpen}
         onOpenChange={setSignatureOpen}

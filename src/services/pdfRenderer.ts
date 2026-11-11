@@ -156,6 +156,97 @@ export async function getPdfPageDimensions(
   return dimensions;
 }
 
+export interface RasterizedPage {
+  pageNumber: number;
+  width: number;
+  height: number;
+  /** Pixel width at the requested scale. */
+  pixelWidth: number;
+  pixelHeight: number;
+  dataUrl: string;
+}
+
+/**
+ * Rasterize an in-memory PDF (typically the output of the export engine) into
+ * page images. Used by PNG/JPG export and the print view so both share the same
+ * vector-faithful rendering path as the exported PDF.
+ */
+export async function rasterizePdfBytes(
+  bytes: Uint8Array,
+  options: {
+    /** Multiplier on the PDF's 72 dpi user space. 2 ≈ 144 dpi. */
+    scale?: number;
+    format?: "png" | "jpeg";
+    quality?: number;
+    background?: string;
+    maxPixelDimension?: number;
+    onProgress?: (current: number, total: number) => void;
+  } = {},
+): Promise<RasterizedPage[]> {
+  const scale = clamp(options.scale ?? 2, 0.5, 6);
+  const format = options.format ?? "png";
+  const quality = clamp(options.quality ?? 0.92, 0.4, 1);
+  const background = options.background ?? "#ffffff";
+  const maxPixelDimension = options.maxPixelDimension ?? 5000;
+
+  const data = new Uint8Array(
+    bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer,
+  );
+  let document: PDFDocumentProxy;
+  try {
+    document = await pdfjs.getDocument({
+      data,
+      isEvalSupported: false,
+      useSystemFonts: true,
+    }).promise;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "The PDF could not be read.";
+    throw new PdfRenderError(`The document could not be rasterized. ${message}`);
+  }
+
+  const pages: RasterizedPage[] = [];
+  try {
+    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+      const page = await document.getPage(pageNumber);
+      try {
+        const viewport = page.getViewport({ scale });
+        const pixelScale = Math.min(
+          1,
+          maxPixelDimension / Math.max(viewport.width, viewport.height),
+        );
+        const finalViewport = page.getViewport({ scale: scale * pixelScale });
+        const canvas = window.document.createElement("canvas");
+        canvas.width = Math.max(1, Math.ceil(finalViewport.width));
+        canvas.height = Math.max(1, Math.ceil(finalViewport.height));
+        const context = canvas.getContext("2d", { alpha: format === "png" });
+        if (!context) throw new PdfRenderError("Canvas rendering is unavailable.");
+        if (format === "jpeg") {
+          context.fillStyle = background;
+          context.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        await page.render({ canvasContext: context, viewport: finalViewport }).promise;
+        pages.push({
+          pageNumber,
+          width: finalViewport.width / scale,
+          height: finalViewport.height / scale,
+          pixelWidth: canvas.width,
+          pixelHeight: canvas.height,
+          dataUrl: canvas.toDataURL(
+            format === "jpeg" ? "image/jpeg" : "image/png",
+            quality,
+          ),
+        });
+      } finally {
+        page.cleanup();
+      }
+      options.onProgress?.(pageNumber, document.numPages);
+    }
+  } finally {
+    await document.destroy().catch(() => undefined);
+  }
+  return pages;
+}
+
 export async function disposePdfAsset(assetId: string): Promise<void> {
   const cached = documentCache.get(assetId);
   documentCache.delete(assetId);

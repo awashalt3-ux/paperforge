@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronUp,
   Download,
+  FileArchive,
   FileOutput,
   FileText,
   FolderInput,
@@ -59,6 +60,9 @@ import { MAX_PDF_BYTES, validateImageFile, validatePdfFile } from "@/utils/files
 import { createId } from "@/utils/id";
 import { downloadBlob, formatBytes } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { createZip } from "@/lib/zip";
+import { ContextTip } from "@/components/common/Tip";
+import { tipsFor } from "@/lib/tips";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 type ToolId =
@@ -574,6 +578,20 @@ export function ToolsPage() {
     results.forEach((result) => downloadResult(result));
   };
 
+  const downloadAllZip = () => {
+    if (results.length === 0) return;
+    try {
+      const zip = createZip(
+        results.map((result) => ({ name: result.name, data: result.bytes })),
+      );
+      const base = baseName(options.outputName.trim() || firstFile?.name || "paperforge");
+      downloadBlob(zip, `${base}-results.zip`);
+      toast.success(`${results.length} files downloaded as a ZIP`);
+    } catch {
+      toast.error("The ZIP could not be created. Try downloading files individually.");
+    }
+  };
+
   const editResult = async (result: ResultFile) => {
     setEditingResultId(result.id);
     setError(null);
@@ -669,6 +687,7 @@ export function ToolsPage() {
             Every operation uses pdf-lib and preserves vector content where the output format
             allows it.
           </div>
+          <ContextTip tips={tipsFor("tools")} className="mt-2 hidden lg:flex" />
         </aside>
 
         <section className="overflow-hidden rounded-2xl border border-border/70 bg-card/70">
@@ -1311,10 +1330,16 @@ export function ToolsPage() {
                     </div>
                   </div>
                   {results.length > 1 && (
-                    <Button variant="outline" size="sm" onClick={downloadAll}>
-                      <Download className="size-3.5" />
-                      Download all
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={downloadAll}>
+                        <Download className="size-3.5" />
+                        Download each
+                      </Button>
+                      <Button variant="soft" size="sm" onClick={downloadAllZip} className="gap-1.5">
+                        <FileArchive className="size-3.5" />
+                        Download ZIP
+                      </Button>
+                    </div>
                   )}
                 </div>
                 <div className="mt-3 space-y-1.5">
