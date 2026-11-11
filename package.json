@@ -1,7 +1,7 @@
 {
   "name": "paperforge",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "A local-first PDF creation and editing studio.",
   "scripts": {

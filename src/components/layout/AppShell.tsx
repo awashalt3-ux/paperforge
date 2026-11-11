@@ -311,7 +311,7 @@ export function AppShell() {
           <ThemeToggle compact={collapsed} />
           {!collapsed && (
             <div className="mt-2 flex items-center justify-between px-2 text-[9px] font-medium text-muted-foreground/55">
-              <span>v1.0</span>
+              <span>v{__APP_VERSION__}</span>
               <span className="flex items-center gap-1.5">
                 <span className="size-1.5 rounded-full bg-emerald-500" />
                 Local storage

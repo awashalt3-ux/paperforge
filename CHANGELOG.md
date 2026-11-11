@@ -5,14 +5,21 @@ All notable changes to Paperforge are documented here. The format follows
 
 ## [Unreleased]
 
+### Planned
+
+- Crop pages and apply headers/footers in bulk.
+- Optional French interface alongside the existing English copy.
+
+## [1.1.0] — 2026-11-11
+
 ### Added
 
 - **Help centre** at `/help` with a searchable guide, a complete shortcut reference, tips, and
   troubleshooting notes. Reachable with `G H` or from the command palette.
-- **First-run onboarding tour** that introduces the three ways to start a document. It can be
-  replayed from Settings.
-- **Contextual tips** in the dashboard, editor properties panel, and tool bench. Dismissals persist
-  locally.
+- **Welcome tour** that introduces the three ways to start a document. It is opt-in, never blocks
+  the workspace, and can be replayed from Settings.
+- **Contextual tips** in the dashboard, editor properties panel, template library, and tool bench.
+  Dismissals persist locally.
 - **Trash with recovery.** Deleting a document now moves it to the trash for 30 days. Documents can
   be restored, deleted permanently, or purged from the dashboard and Settings. Expired items are
   cleaned up on startup.
@@ -34,8 +41,13 @@ All notable changes to Paperforge are documented here. The format follows
 
 - Deleting a document no longer destroys its imported PDF assets before the trash window expires.
 - Duplicated documents no longer inherit the trash state or a stale thumbnail.
+- **Collapsed sidebar.** Radix `TooltipTrigger` with `asChild` stringified the `NavLink`
+  function-form `className`, giving every navigation link every class — including the active state
+  and focus ring.
+- **Dashboard card menu.** Choosing “Move to trash” also opened the document because the portaled
+  menu clicks bubbled to the card's own handler.
 
-## [1.0.0]
+## [1.0.0] — 2026-11-01
 
 Initial public version: editor, eight templates, nine PDF tools, portable projects, local-first
 persistence, command palette, and a styled 404.
