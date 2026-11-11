@@ -23,14 +23,6 @@ interface PaletteItem {
   keywords?: string;
 }
 
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return (
-    target.isContentEditable ||
-    ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
-  );
-}
-
 export function CommandPalette() {
   const open = useUIStore((state) => state.commandOpen);
   const setOpen = useUIStore((state) => state.setCommandOpen);
@@ -106,6 +98,27 @@ export function CommandPalette() {
           window.setTimeout(() => setImportOpen(true), 60);
         },
       },
+      {
+        id: "action-help",
+        label: "Open the help guide",
+        hint: "Tips, shortcuts and troubleshooting",
+        group: "Actions",
+        icon: FileText,
+        keywords: "help guide tips documentation support shortcuts",
+        run: () => go("/help"),
+      },
+      {
+        id: "action-shortcuts",
+        label: "Show keyboard shortcuts",
+        hint: "Every shortcut in one place",
+        group: "Actions",
+        icon: FileText,
+        keywords: "keyboard shortcuts keys hotkeys",
+        run: () => {
+          close();
+          window.setTimeout(() => useUIStore.getState().setShortcutsOpen(true), 60);
+        },
+      },
     ];
 
     const destinations: PaletteItem[] = DESTINATIONS.map((destination) => ({
@@ -114,7 +127,7 @@ export function CommandPalette() {
       hint: destination.description,
       group: "Go to",
       icon: destination.icon,
-      keywords: `${destination.label} ${destination.description}`,
+      keywords: `${destination.label} ${destination.description} ${destination.shortcut ?? ""}`,
       run: () => go(destination.to),
     }));
 

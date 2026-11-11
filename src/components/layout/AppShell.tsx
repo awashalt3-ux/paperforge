@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   FileText,
+  HelpCircle,
+  Keyboard,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
@@ -40,6 +42,8 @@ export function AppShell() {
   const openCreateDialog = useUIStore((state) => state.setCreateDialogOpen);
   const openImportDialog = useUIStore((state) => state.setImportDialogOpen);
   const setCommandOpen = useUIStore((state) => state.setCommandOpen);
+  const setHelpOpen = useUIStore((state) => state.setHelpOpen);
+  const setShortcutsOpen = useUIStore((state) => state.setShortcutsOpen);
   const recent = documents.slice(0, 4);
 
   useEffect(() => {
@@ -52,7 +56,21 @@ export function AppShell() {
     main?.scrollTo({ top: 0 });
   }, [location.pathname]);
 
-  // "G then D/T/P/S" navigation, mirroring the labels in the palette.
+  // Global help shortcut: "?" opens the shortcut reference outside the editor.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isTypingTarget(event.target) || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (document.querySelector('[role="dialog"][data-state="open"]')) return;
+      if (event.key === "?") {
+        event.preventDefault();
+        useUIStore.getState().setShortcutsOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  // "G then D/T/P/H/S" navigation, mirroring the labels in the palette.
   useEffect(() => {
     let pending = false;
     let timer = 0;
@@ -75,6 +93,7 @@ export function AppShell() {
         d: "/",
         t: "/templates",
         p: "/tools",
+        h: "/help",
         s: "/settings",
       };
       const target = map[event.key.toLowerCase()];
@@ -177,20 +196,22 @@ export function AppShell() {
           )}
           {nav.map((item) => {
             const Icon = item.icon;
+            const isActive = item.end
+              ? location.pathname === item.to
+              : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
             const link = (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
-                className={({ isActive }) =>
-                  cn(
-                    "group flex h-9 items-center gap-2.5 rounded-lg text-[12.5px] font-medium transition-colors",
-                    collapsed ? "w-9 justify-center" : "w-full px-2.5",
-                    isActive
-                      ? "bg-card text-foreground shadow-[0_1px_2px_rgba(15,23,20,0.05)] ring-1 ring-border/60"
-                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-                  )
-                }
+                aria-current={isActive ? "page" : undefined}
+                className={cn(
+                  "group flex h-9 items-center gap-2.5 rounded-lg text-[12.5px] font-medium transition-colors",
+                  collapsed ? "w-9 justify-center" : "w-full px-2.5",
+                  isActive
+                    ? "bg-card text-foreground shadow-[0_1px_2px_rgba(15,23,20,0.05)] ring-1 ring-border/60"
+                    : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                )}
               >
                 <Icon className="size-[15px] shrink-0" strokeWidth={1.8} />
                 {!collapsed && <span>{item.label}</span>}
@@ -238,6 +259,42 @@ export function AppShell() {
         </nav>
 
         <div className={cn("border-t border-border/60 p-3", collapsed && "flex flex-col items-center")}>
+          <div className={cn("mb-2 flex items-center gap-1", collapsed ? "flex-col" : "justify-between")}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size={collapsed ? "icon-sm" : "xs"}
+                  onClick={() => setHelpOpen(true)}
+                  className={cn(
+                    "gap-1.5 text-muted-foreground",
+                    !collapsed && "flex-1 justify-start px-1.5",
+                  )}
+                  aria-label="Open quick help"
+                >
+                  <HelpCircle className="size-3.5" />
+                  {!collapsed && <span className="text-[10.5px] font-medium">Quick help</span>}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side={collapsed ? "right" : "top"}>
+                Quick help and shortcuts
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => setShortcutsOpen(true)}
+                  className="text-muted-foreground/70"
+                  aria-label="Keyboard shortcuts"
+                >
+                  <Keyboard className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Keyboard shortcuts (?)</TooltipContent>
+            </Tooltip>
+          </div>
           {!collapsed && (
             <div className="mb-2.5 flex items-start gap-2.5 rounded-lg border border-forge-600/10 bg-forge-600/[0.045] p-2.5 dark:bg-forge-300/[0.04]">
               <Sparkles className="mt-0.5 size-3.5 shrink-0 text-forge-600 dark:text-forge-300" />

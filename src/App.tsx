@@ -3,6 +3,8 @@ import { Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { CommandPalette } from "@/components/common/CommandPalette";
+import { HelpDialog } from "@/components/common/HelpDialog";
+import { OnboardingTour } from "@/components/common/OnboardingTour";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CreateDocumentDialog } from "@/components/pdf/CreateDocumentDialog";
 import { ImportPdfDialog } from "@/components/pdf/ImportPdfDialog";
@@ -11,12 +13,11 @@ import { DashboardPage } from "@/pages/DashboardPage";
 import { TemplatesPage } from "@/pages/TemplatesPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { ToolsPage } from "@/pages/ToolsPage";
+import { HelpPage } from "@/pages/HelpPage";
 import { EditorPage } from "@/pages/EditorPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
-import {
-  applyTheme,
-  usePreferencesStore,
-} from "@/store/preferencesStore";
+import { ShortcutsDialog } from "@/components/editor/ShortcutsDialog";
+import { applyTheme, usePreferencesStore } from "@/store/preferencesStore";
 
 function StudioEffects() {
   const theme = usePreferencesStore((state) => state.theme);
@@ -49,6 +50,7 @@ export default function App() {
             <Route index element={<DashboardPage />} />
             <Route path="/templates" element={<TemplatesPage />} />
             <Route path="/tools" element={<ToolsPage />} />
+            <Route path="/help" element={<HelpPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
@@ -56,6 +58,9 @@ export default function App() {
         <CreateDocumentDialog />
         <ImportPdfDialog />
         <CommandPalette />
+        <HelpDialog />
+        <ShortcutsDialog />
+        <OnboardingTour />
         <Toaster
           position="bottom-right"
           closeButton

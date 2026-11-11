@@ -7,6 +7,7 @@ import {
   FileText,
   Home,
   LayoutTemplate,
+  LifeBuoy,
   Search,
   Wrench,
 } from "lucide-react";
@@ -234,6 +235,12 @@ export function NotFoundPage() {
                   <Link to="/tools">
                     <Wrench className="size-4" />
                     Outils PDF
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="justify-start bg-card/60">
+                  <Link to="/help">
+                    <LifeBuoy className="size-4" />
+                    Aide
                   </Link>
                 </Button>
               </div>

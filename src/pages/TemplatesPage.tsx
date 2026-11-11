@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PagePreview } from "@/components/pdf/PagePreview";
+import { ContextTip } from "@/components/common/Tip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,6 +25,7 @@ import {
 import { useDocumentStore } from "@/store/documentStore";
 import { useUIStore } from "@/store/uiStore";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { tipsFor } from "@/lib/tips";
 import {
   TEMPLATE_DEFINITIONS,
   getTemplatePreviewPage,
@@ -141,6 +143,10 @@ export function TemplatesPage() {
         <span className="ml-auto text-[10.5px] text-muted-foreground">
           {visible.length} template{visible.length === 1 ? "" : "s"}
         </span>
+      </div>
+
+      <div className="mt-4 max-w-xl">
+        <ContextTip tips={tipsFor("templates")} />
       </div>
 
       {visible.length > 0 ? (

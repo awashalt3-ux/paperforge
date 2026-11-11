@@ -8,13 +8,16 @@ import {
   FileText,
   FolderArchive,
   Grid2X2,
+  Keyboard,
   LayoutList,
+  LifeBuoy,
   Loader2,
   MoreHorizontal,
   Plus,
   Search,
   ShieldCheck,
   Sparkles,
+  Trash2,
   Upload,
   UploadCloud,
 } from "lucide-react";
@@ -22,6 +25,8 @@ import { toast } from "sonner";
 import type { DocumentSummary } from "@/types/document";
 import { DocumentCard } from "@/components/pdf/DocumentCard";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { ContextTip } from "@/components/common/Tip";
+import { WelcomeCard } from "@/components/common/OnboardingTour";
 import { PagePreview } from "@/components/pdf/PagePreview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,9 +52,11 @@ import { useDocumentStore } from "@/store/documentStore";
 import { useUIStore } from "@/store/uiStore";
 import { TEMPLATE_DEFINITIONS, getTemplatePreviewPage, instantiateTemplate } from "@/templates";
 import { importProjectFile } from "@/services/projects";
-import { cn, formatRelativeDate } from "@/lib/utils";
+import { tipsFor } from "@/lib/tips";
+import { TRASH_RETENTION_DAYS } from "@/db/database";
+import { cn } from "@/lib/utils";
 
-type Filter = "all" | "templates" | "blank";
+type Filter = "all" | "templates" | "blank" | "trash";
 type Sort = "recent" | "name" | "pages";
 
 function timeGreeting(): string {
@@ -205,9 +212,13 @@ function TemplateStrip() {
 export function DashboardPage() {
   const navigate = useNavigate();
   const documents = useDocumentStore((state) => state.documents);
+  const trashedDocuments = useDocumentStore((state) => state.trashedDocuments);
   const initialized = useDocumentStore((state) => state.initialized);
   const isLoading = useDocumentStore((state) => state.isLoading);
   const deleteDocument = useDocumentStore((state) => state.deleteDocument);
+  const destroyDocument = useDocumentStore((state) => state.destroyDocument);
+  const restoreDocument = useDocumentStore((state) => state.restoreDocument);
+  const emptyTrash = useDocumentStore((state) => state.emptyTrash);
   const refreshDocuments = useDocumentStore((state) => state.refreshDocuments);
   const openCreateDialog = useUIStore((state) => state.setCreateDialogOpen);
   const openImportDialog = useUIStore((state) => state.setImportDialogOpen);
@@ -221,6 +232,8 @@ export function DashboardPage() {
   });
   const [renameTarget, setRenameTarget] = useState<DocumentSummary | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DocumentSummary | null>(null);
+  const [destroyTarget, setDestroyTarget] = useState<DocumentSummary | null>(null);
+  const [emptyTrashOpen, setEmptyTrashOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [importingProject, setImportingProject] = useState(false);
   const projectInputRef = useRef<HTMLInputElement>(null);
@@ -238,20 +251,33 @@ export function DashboardPage() {
     [documents],
   );
 
+  const showingTrash = filter === "trash";
+  const source = showingTrash ? trashedDocuments : documents;
+
   const visibleDocuments = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    const filtered = documents.filter((document) => {
-      if (filter === "templates" && !document.templateId) return false;
-      if (filter === "blank" && document.templateId) return false;
+    const filtered = source.filter((document) => {
+      if (!showingTrash && filter === "templates" && !document.templateId) return false;
+      if (!showingTrash && filter === "blank" && document.templateId) return false;
       if (normalized && !document.title.toLowerCase().includes(normalized)) return false;
       return true;
     });
     return [...filtered].sort((a, b) => {
       if (sort === "name") return a.title.localeCompare(b.title);
       if (sort === "pages") return b.pageCount - a.pageCount;
+      if (showingTrash) return (b.deletedAt ?? 0) - (a.deletedAt ?? 0);
       return b.updatedAt - a.updatedAt;
     });
-  }, [documents, filter, query, sort]);
+  }, [source, filter, query, sort, showingTrash]);
+
+  const restore = async (document: DocumentSummary) => {
+    try {
+      await restoreDocument(document.id);
+      toast.success("Document restored");
+    } catch {
+      toast.error("This document could not be restored.");
+    }
+  };
 
   const handleImportProject = async (file: File | null) => {
     if (!file) return;
@@ -334,6 +360,12 @@ export function DashboardPage() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
+                <Link to="/help" className="gap-2">
+                  <ShieldCheck />
+                  Help & guide
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
                 <Link to="/settings" className="gap-2">
                   <ShieldCheck />
                   Storage & settings
@@ -398,15 +430,52 @@ export function DashboardPage() {
         })}
       </section>
 
+      <div className="mt-4 max-w-xl">
+        <ContextTip tips={tipsFor("dashboard")} intervalMs={9000} />
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <WelcomeCard />
+        <div className="rounded-2xl border border-border/70 bg-card/55 p-5">
+          <p className="micro-label">Never get stuck</p>
+          <p className="mt-2 text-[12.5px] font-semibold tracking-[-0.01em]">
+            Help is one keystroke away
+          </p>
+          <p className="mt-1 max-w-md text-[11px] leading-relaxed text-muted-foreground">
+            The guide covers every workflow, the shortcut reference covers the keyboard, and the
+            search palette finds any document or tool.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="xs" className="gap-1.5" asChild>
+              <Link to="/help">
+                <LifeBuoy className="size-3.5" />
+                Open the guide
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="xs"
+              className="gap-1.5"
+              onClick={() => useUIStore.getState().setShortcutsOpen(true)}
+            >
+              <Keyboard className="size-3.5" />
+              Shortcuts
+            </Button>
+          </div>
+        </div>
+      </div>
+
       <TemplateStrip />
 
       <section className="mt-14">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="micro-label">The shelf</p>
-            <h2 className="display-serif mt-1.5 text-[26px]">Your documents</h2>
+            <p className="micro-label">{showingTrash ? "Recovery" : "The shelf"}</p>
+            <h2 className="display-serif mt-1.5 text-[26px]">
+              {showingTrash ? "Trash" : "Your documents"}
+            </h2>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Tabs value={filter} onValueChange={(value) => setFilter(value as Filter)}>
               <TabsList className="h-8">
                 <TabsTrigger value="all" className="text-[11px]">
@@ -418,10 +487,39 @@ export function DashboardPage() {
                 <TabsTrigger value="blank" className="text-[11px]">
                   Built from scratch
                 </TabsTrigger>
+                <TabsTrigger value="trash" className="gap-1 text-[11px]">
+                  <Trash2 className="size-3" />
+                  Trash
+                  {trashedDocuments.length > 0 && (
+                    <span className="rounded-full bg-muted px-1.5 text-[9px] font-semibold text-muted-foreground">
+                      {trashedDocuments.length}
+                    </span>
+                  )}
+                </TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
         </div>
+
+        {showingTrash && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-3.5 py-2.5">
+            <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-200">
+              Documents in the trash are kept for {TRASH_RETENTION_DAYS} days, then removed
+              automatically. Restoring puts them back on the shelf.
+            </p>
+            {trashedDocuments.length > 0 && (
+              <Button
+                variant="outline"
+                size="xs"
+                className="gap-1.5 border-destructive/25 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => setEmptyTrashOpen(true)}
+              >
+                <Trash2 className="size-3.5" />
+                Empty trash
+              </Button>
+            )}
+          </div>
+        )}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <div className="relative min-w-[210px] flex-1 sm:max-w-[320px]">
@@ -429,7 +527,7 @@ export function DashboardPage() {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search documents"
+              placeholder={showingTrash ? "Search the trash" : "Search documents"}
               className="h-9 bg-card/60 pl-9 text-[12px]"
             />
           </div>
@@ -437,11 +535,19 @@ export function DashboardPage() {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2 bg-card/60 text-muted-foreground">
                 <Clock3 className="size-3.5" />
-                {sort === "recent" ? "Recently edited" : sort === "name" ? "Name" : "Page count"}
+                {sort === "recent"
+                  ? showingTrash
+                    ? "Recently deleted"
+                    : "Recently edited"
+                  : sort === "name"
+                    ? "Name"
+                    : "Page count"}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onClick={() => setSort("recent")}>Recently edited</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSort("recent")}>
+                {showingTrash ? "Recently deleted" : "Recently edited"}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setSort("name")}>Name</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setSort("pages")}>Page count</DropdownMenuItem>
             </DropdownMenuContent>
@@ -452,6 +558,7 @@ export function DashboardPage() {
               size="icon-xs"
               onClick={() => setView("grid")}
               aria-label="Grid view"
+              aria-pressed={view === "grid"}
             >
               <Grid2X2 className="size-3.5" />
             </Button>
@@ -460,6 +567,7 @@ export function DashboardPage() {
               size="icon-xs"
               onClick={() => setView("list")}
               aria-label="List view"
+              aria-pressed={view === "list"}
             >
               <LayoutList className="size-3.5" />
             </Button>
@@ -485,6 +593,9 @@ export function DashboardPage() {
                   view="grid"
                   onRename={setRenameTarget}
                   onDelete={setDeleteTarget}
+                  onRestore={(target) => void restore(target)}
+                  onDestroy={setDestroyTarget}
+                  trashed={showingTrash}
                 />
               ))}
             </div>
@@ -497,6 +608,9 @@ export function DashboardPage() {
                   view="list"
                   onRename={setRenameTarget}
                   onDelete={setDeleteTarget}
+                  onRestore={(target) => void restore(target)}
+                  onDestroy={setDestroyTarget}
+                  trashed={showingTrash}
                 />
               ))}
             </div>
@@ -504,18 +618,24 @@ export function DashboardPage() {
         ) : (
           <div className="mt-5 rounded-2xl border border-dashed border-border/80 bg-card/35 px-6 py-14 text-center">
             <div className="mx-auto grid size-11 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-sm">
-              <FileText className="size-5" />
+              {showingTrash ? <Trash2 className="size-5" /> : <FileText className="size-5" />}
             </div>
             <h3 className="display-serif mt-4 text-2xl">
-              {documents.length === 0 ? "The shelf is waiting." : "No documents found."}
+              {showingTrash
+                ? "The trash is empty."
+                : documents.length === 0
+                  ? "The shelf is waiting."
+                  : "No documents found."}
             </h3>
             <p className="mx-auto mt-2 max-w-sm text-[12px] leading-relaxed text-muted-foreground">
-              {documents.length === 0
-                ? "Start with a blank page, bring in an existing PDF, or choose a template above."
-                : "Try a different search term or filter. Your other documents are still here."}
+              {showingTrash
+                ? "Documents you delete stay here for 30 days. Nothing is waiting to be removed."
+                : documents.length === 0
+                  ? "Start with a blank page, bring in an existing PDF, or choose a template above."
+                  : "Try a different search term or filter. Your other documents are still here."}
             </p>
             <div className="mt-5 flex justify-center gap-2">
-              {documents.length === 0 ? (
+              {!showingTrash && documents.length === 0 ? (
                 <>
                   <Button variant="outline" onClick={() => openImportDialog(true)}>
                     <UploadCloud className="size-4" />
@@ -534,7 +654,7 @@ export function DashboardPage() {
                     setFilter("all");
                   }}
                 >
-                  Clear filters
+                  {showingTrash ? "Back to documents" : "Clear filters"}
                 </Button>
               )}
             </div>
@@ -575,24 +695,80 @@ export function DashboardPage() {
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete this document?"
+        title="Move this document to the trash?"
         description={
           deleteTarget
-            ? `“${deleteTarget.title}” and any imported PDF pages it uses will be permanently removed from this browser. This cannot be undone.`
+            ? `“${deleteTarget.title}” will be moved to the trash and kept for ${TRASH_RETENTION_DAYS} days. You can restore it at any time before then.`
             : ""
         }
-        confirmLabel="Delete document"
-        destructive
+        confirmLabel="Move to trash"
         loading={deleting}
         onConfirm={async () => {
           if (!deleteTarget) return;
           setDeleting(true);
           try {
             await deleteDocument(deleteTarget.id);
-            toast.success("Document deleted");
+            toast.success("Moved to trash", {
+              description: `“${deleteTarget.title}” can be restored from the trash for ${TRASH_RETENTION_DAYS} days.`,
+            });
             setDeleteTarget(null);
           } catch {
             toast.error("The document could not be deleted.");
+          } finally {
+            setDeleting(false);
+          }
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(destroyTarget)}
+        onOpenChange={(open) => !open && setDestroyTarget(null)}
+        title="Delete permanently?"
+        description={
+          destroyTarget
+            ? `“${destroyTarget.title}” and any imported PDF pages it uses will be erased from this browser immediately. This cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete permanently"
+        destructive
+        loading={deleting}
+        onConfirm={async () => {
+          if (!destroyTarget) return;
+          setDeleting(true);
+          try {
+            await destroyDocument(destroyTarget.id);
+            toast.success("Document deleted permanently");
+            setDestroyTarget(null);
+          } catch {
+            toast.error("The document could not be deleted.");
+          } finally {
+            setDeleting(false);
+          }
+        }}
+      />
+
+      <ConfirmDialog
+        open={emptyTrashOpen}
+        onOpenChange={setEmptyTrashOpen}
+        title="Empty the trash?"
+        description={`This permanently removes ${trashedDocuments.length} document${
+          trashedDocuments.length === 1 ? "" : "s"
+        } and any imported PDF pages they use. This cannot be undone.`}
+        confirmLabel="Empty trash"
+        destructive
+        loading={deleting}
+        onConfirm={async () => {
+          setDeleting(true);
+          try {
+            const removed = await emptyTrash();
+            toast.success(
+              removed > 0
+                ? `${removed} document${removed === 1 ? "" : "s"} removed`
+                : "Nothing to remove",
+            );
+            setEmptyTrashOpen(false);
+          } catch {
+            toast.error("The trash could not be emptied.");
           } finally {
             setDeleting(false);
           }

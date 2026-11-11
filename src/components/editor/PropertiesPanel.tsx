@@ -42,6 +42,8 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ContextTip } from "@/components/common/Tip";
+import { tipsFor } from "@/lib/tips";
 import {
   Select,
   SelectContent,
@@ -691,6 +693,7 @@ export function PropertiesPanel({ className }: { className?: string }) {
                   layers below to reach hidden or locked elements.
                 </p>
               </div>
+              <ContextTip tips={tipsFor("editor")} className="mt-3" intervalMs={11000} />
             </div>
           </>
         ) : (

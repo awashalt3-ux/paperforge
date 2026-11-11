@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Check,
+  Compass,
   Database,
   HardDrive,
   Loader2,
@@ -13,8 +15,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { useOnboardingStore } from "@/components/common/OnboardingTour";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -91,13 +93,17 @@ export function SettingsPage() {
   useDocumentTitle("Settings");
   const preferences = usePreferencesStore();
   const documents = useDocumentStore((state) => state.documents);
+  const trashedDocuments = useDocumentStore((state) => state.trashedDocuments);
   const refreshDocuments = useDocumentStore((state) => state.refreshDocuments);
+  const resetOnboarding = useOnboardingStore((state) => state.reset);
+  const onboardingCompleted = useOnboardingStore((state) => state.completed);
   const [assetBytes, setAssetBytes] = useState(0);
   const [assetCount, setAssetCount] = useState(0);
   const [quota, setQuota] = useState<{ usage: number; quota: number } | null>(null);
   const [loadingStorage, setLoadingStorage] = useState(true);
   const [clearOpen, setClearOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [emptyTrashOpen, setEmptyTrashOpen] = useState(false);
 
   const loadStorage = async () => {
     setLoadingStorage(true);
@@ -134,6 +140,7 @@ export function SettingsPage() {
         historyPast: [],
         historyFuture: [],
         documents: [],
+        trashedDocuments: [],
         saveStatus: "idle",
         lastSavedAt: null,
       });
@@ -143,6 +150,24 @@ export function SettingsPage() {
       void loadStorage();
     } catch {
       toast.error("The local database could not be cleared.");
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const handleEmptyTrash = async () => {
+    setClearing(true);
+    try {
+      const removed = await useDocumentStore.getState().emptyTrash();
+      toast.success(
+        removed > 0
+          ? `${removed} trashed document${removed === 1 ? "" : "s"} removed`
+          : "The trash was already empty",
+      );
+      setEmptyTrashOpen(false);
+      void loadStorage();
+    } catch {
+      toast.error("The trash could not be emptied.");
     } finally {
       setClearing(false);
     }
@@ -334,7 +359,11 @@ export function SettingsPage() {
                     <p className="text-[10px] text-muted-foreground">
                       {loadingStorage
                         ? "Measuring local data…"
-                        : `${documents.length} document${documents.length === 1 ? "" : "s"} · ${assetCount} imported file${assetCount === 1 ? "" : "s"}`}
+                        : `${documents.length} document${documents.length === 1 ? "" : "s"}${
+                            trashedDocuments.length > 0
+                              ? ` · ${trashedDocuments.length} in trash`
+                              : ""
+                          } · ${assetCount} imported file${assetCount === 1 ? "" : "s"}`}
                     </p>
                   </div>
                 </div>
@@ -361,11 +390,34 @@ export function SettingsPage() {
               )}
             </div>
 
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/15 px-4 py-3.5">
+              <div>
+                <p className="text-[12px] font-medium">Trash</p>
+                <p className="mt-0.5 text-[10.5px] text-muted-foreground">
+                  {trashedDocuments.length === 0
+                    ? "Deleted documents appear here for 30 days before they are purged."
+                    : `${trashedDocuments.length} document${
+                        trashedDocuments.length === 1 ? "" : "s"
+                      } can still be restored from the dashboard.`}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setEmptyTrashOpen(true)}
+                disabled={trashedDocuments.length === 0}
+              >
+                <Trash2 className="size-3.5" />
+                Empty trash
+              </Button>
+            </div>
+
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/15 bg-destructive/[0.035] px-4 py-3.5">
               <div>
                 <p className="text-[12px] font-medium">Delete all local documents</p>
                 <p className="mt-0.5 text-[10.5px] text-muted-foreground">
-                  Removes every document and imported PDF. Preferences are kept.
+                  Removes every document, trashed item, and imported PDF. Preferences are kept.
                 </p>
               </div>
               <Button
@@ -373,7 +425,7 @@ export function SettingsPage() {
                 size="sm"
                 className="border-destructive/25 text-destructive hover:bg-destructive/10 hover:text-destructive"
                 onClick={() => setClearOpen(true)}
-                disabled={documents.length === 0}
+                disabled={documents.length === 0 && trashedDocuments.length === 0}
               >
                 <Trash2 className="size-3.5" />
                 Clear library
@@ -436,6 +488,21 @@ export function SettingsPage() {
               <RotateCcw className="size-3.5" />
               Reset preferences
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-1.5 w-full gap-1.5 text-muted-foreground"
+              onClick={() => {
+                resetOnboarding();
+                useOnboardingStore.getState().startTour();
+                toast.success("Welcome tour opened", {
+                  description: "It walks through the three ways to start a document.",
+                });
+              }}
+            >
+              <Compass className="size-3.5" />
+              {onboardingCompleted ? "Replay the welcome tour" : "Take the welcome tour"}
+            </Button>
           </div>
 
           <div className="rounded-2xl border border-border/70 bg-card/40 p-5 text-[10px] leading-relaxed text-muted-foreground">
@@ -445,6 +512,9 @@ export function SettingsPage() {
               <span className="font-medium text-foreground/70">Project file → Export</span>. It
               includes the document and any original PDF pages as one portable file.
             </p>
+            <Button variant="link" size="sm" className="mt-1 h-auto p-0 text-[10px]" asChild>
+              <Link to="/help">Read the help guide</Link>
+            </Button>
           </div>
         </aside>
       </div>
@@ -453,11 +523,27 @@ export function SettingsPage() {
         open={clearOpen}
         onOpenChange={setClearOpen}
         title="Delete all local documents?"
-        description={`This will permanently remove ${documents.length} document${documents.length === 1 ? "" : "s"} and every imported PDF from this browser. This cannot be undone.`}
+        description={`This will permanently remove ${
+          documents.length + trashedDocuments.length
+        } document${
+          documents.length + trashedDocuments.length === 1 ? "" : "s"
+        } (including the trash) and every imported PDF from this browser. This cannot be undone.`}
         confirmLabel="Delete everything"
         destructive
         loading={clearing || loadingStorage}
         onConfirm={handleClear}
+      />
+      <ConfirmDialog
+        open={emptyTrashOpen}
+        onOpenChange={setEmptyTrashOpen}
+        title="Empty the trash?"
+        description={`This permanently removes ${trashedDocuments.length} document${
+          trashedDocuments.length === 1 ? "" : "s"
+        } and any imported PDF pages they use. Restored documents are not affected.`}
+        confirmLabel="Empty trash"
+        destructive
+        loading={clearing}
+        onConfirm={handleEmptyTrash}
       />
       {loadingStorage && (
         <div className="pointer-events-none fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border/70 bg-card/90 px-3 py-1.5 text-[10px] text-muted-foreground shadow-lift backdrop-blur">

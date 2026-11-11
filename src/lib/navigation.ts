@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   LayoutTemplate,
+  LifeBuoy,
   Settings2,
   Wrench,
   type LucideIcon,
@@ -39,6 +40,13 @@ export const DESTINATIONS: Destination[] = [
     description: "Merge, split, rotate, watermark and more.",
     icon: Wrench,
     shortcut: "G P",
+  },
+  {
+    to: "/help",
+    label: "Help",
+    description: "The full guide, tips, and shortcuts.",
+    icon: LifeBuoy,
+    shortcut: "G H",
   },
   {
     to: "/settings",
