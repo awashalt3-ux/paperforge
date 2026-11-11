@@ -346,7 +346,7 @@ function TableNode({ element }: { element: TableElement }) {
       : Array(element.rows.length).fill(element.height / Math.max(1, element.rows.length));
   const totalRowHeight = Math.max(0.0001, rowHeights.reduce((sum, height) => sum + height, 0));
   const columnWidths = weights.map((weight) => (weight / totalWeight) * element.width);
-  const xOffsets = columnWidths.reduce<number[]>((offsets, width, index) => {
+  const xOffsets = columnWidths.reduce<number[]>((offsets, _width, index) => {
     offsets.push(index === 0 ? 0 : offsets[index - 1] + columnWidths[index - 1]);
     return offsets;
   }, []);
@@ -425,8 +425,8 @@ interface ElementNodeProps {
   onSelect: (element: PaperElement, event: Konva.KonvaEventObject<MouseEvent>) => void;
   onStartEdit: (element: PaperElement) => void;
   onDragStart: (element: PaperElement, node: Konva.Group) => void;
-  onDragMove: (element: PaperElement, node: Konva.Group) => void;
-  onDragEnd: (element: PaperElement, node: Konva.Group) => void;
+  onDragMove: (node: Konva.Group) => void;
+  onDragEnd: () => void;
   registerNode: (node: Konva.Group | null) => void;
 }
 
@@ -490,11 +490,10 @@ function ElementNode({
       }}
       onDragMove={(event) => {
         const node = event.target as Konva.Group;
-        onDragMove(element, node);
+        onDragMove(node);
       }}
-      onDragEnd={(event) => {
-        const node = event.target as Konva.Group;
-        onDragEnd(element, node);
+      onDragEnd={() => {
+        onDragEnd();
       }}
       onDblClick={() => onStartEdit(element)}
       onDblTap={() => onStartEdit(element)}
@@ -773,7 +772,7 @@ function PageStage({
     setActivePage(page.id);
   };
 
-  const handleDragMove = (element: PaperElement, node: Konva.Group) => {
+  const handleDragMove = (node: Konva.Group) => {
     const drag = dragRef.current;
     if (!drag) return;
     let dx = node.x() - drag.startDragged.x;
@@ -844,7 +843,7 @@ function PageStage({
     overlayLayerRef.current?.batchDraw();
   };
 
-  const handleDragEnd = (element: PaperElement, node: Konva.Group) => {
+  const handleDragEnd = () => {
     const drag = dragRef.current;
     dragRef.current = null;
     hideGuides();

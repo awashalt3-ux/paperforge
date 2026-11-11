@@ -26,7 +26,6 @@ const INK = "#16201e";
 const MUTED = "#67716e";
 const LINE = "#dfe4e2";
 const GREEN = "#265249";
-const GREEN_LIGHT = "#dcebe6";
 const SAND = "#f4f1ea";
 const GOLD = "#b7883c";
 
